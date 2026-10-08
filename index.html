@@ -33,6 +33,17 @@
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
 
+        <div class="panel-section">
+          <span class="label">ENERGY</span>
+          <div class="energy-bar"><div id="energy-fill"></div></div>
+          <span id="ability-status"></span>
+        </div>
+
+        <div class="panel-section hidden" id="hold-section">
+          <span class="label">HOLD</span>
+          <canvas id="hold-canvas" width="120" height="120"></canvas>
+        </div>
+
         <div class="panel-section controls">
           <span class="label">CONTROLS</span>
           <ul>
@@ -40,10 +51,29 @@
             <li><kbd>↑</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
+            <li><kbd>E</kbd> habilidad</li>
+            <li><kbd>C</kbd> usar hold</li>
             <li><kbd>P</kbd> pausa</li>
           </ul>
         </div>
       </aside>
+
+      <div class="panel-section hidden" id="queue-section">
+        <span class="label">PREVIEW</span>
+        <canvas id="queue-canvas" width="60" height="300"></canvas>
+      </div>
+    </div>
+
+    <div id="ability-menu" class="overlay hidden">
+      <div class="overlay-box">
+        <p class="menu-title">HABILIDAD</p>
+        <button class="ability-btn" data-ability="1"><kbd>1</kbd> Ver 5 piezas</button>
+        <button class="ability-btn" data-ability="2"><kbd>2</kbd> Cambiar pieza</button>
+        <button class="ability-btn" data-ability="3"><kbd>3</kbd> Ralentizar 10s</button>
+        <button class="ability-btn" data-ability="4"><kbd>4</kbd> Deshacer</button>
+        <button class="ability-btn" data-ability="5"><kbd>5</kbd> Guardar pieza</button>
+        <button id="ability-cancel" class="ability-btn cancel">Esc cancelar</button>
+      </div>
     </div>
 
     <div id="overlay" class="overlay hidden">

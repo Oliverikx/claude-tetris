@@ -142,6 +142,83 @@ body {
   border-radius: 4px;
 }
 
+.panel-section.hidden {
+  display: none;
+}
+
+/* ---- Energy / abilities ---- */
+.energy-bar {
+  height: 12px;
+  background: var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#energy-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+#energy-fill.ready {
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  to { filter: brightness(1.4); }
+}
+
+#ability-status {
+  font-size: 11px;
+  color: var(--accent);
+  min-height: 14px;
+}
+
+#queue-canvas, #hold-canvas {
+  display: block;
+  border: 1px solid var(--border);
+  background: var(--canvas-bg);
+  border-radius: 4px;
+}
+
+.menu-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.ability-btn {
+  width: 190px;
+  background: var(--accent);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ability-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.ability-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ability-btn.cancel {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;

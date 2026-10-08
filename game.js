@@ -30,6 +30,13 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+const ENERGY_MAX = 100;
+const ENERGY_PER_LINE = 25;
+const PREVIEW_PIECES = 10; // spawns the 5-piece preview stays active
+const PREVIEW_COUNT = 5;
+const SLOW_MS = 10000;
+const SLOW_FACTOR = 2;
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -42,17 +49,34 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-btn');
+const energyFill = document.getElementById('energy-fill');
+const abilityStatus = document.getElementById('ability-status');
+const abilityMenu = document.getElementById('ability-menu');
+const holdSection = document.getElementById('hold-section');
+const holdCanvas = document.getElementById('hold-canvas');
+const holdCtx = holdCanvas.getContext('2d');
+const queueSection = document.getElementById('queue-section');
+const queueCanvas = document.getElementById('queue-canvas');
+const queueCtx = queueCanvas.getContext('2d');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, queue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let energy, previewLeft, slowMs, held, holdReady, undoSnap, choosing;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
+function makePiece(type) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function randomPiece() {
+  return makePiece(Math.floor(Math.random() * (PIECES.length - 1)) + 1);
+}
+
+function fillQueue() {
+  while (queue.length < PREVIEW_COUNT + 1) queue.push(randomPiece());
 }
 
 function collide(shape, ox, oy) {
@@ -111,6 +135,7 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    energy = Math.min(ENERGY_MAX, energy + cleared * ENERGY_PER_LINE);
     updateHUD();
   }
 }
@@ -139,14 +164,20 @@ function softDrop() {
 }
 
 function lockPiece() {
+  undoSnap = {
+    board: board.map(r => [...r]),
+    type: current.type,
+    score, lines, level, dropInterval,
+  };
   merge();
   clearLines();
   spawn();
 }
 
 function spawn() {
-  current = next;
-  next = randomPiece();
+  current = queue.shift();
+  fillQueue();
+  if (previewLeft > 0) previewLeft--;
   if (collide(current.shape, current.x, current.y)) {
     // keep only the cells that fit in free board spaces
     current.shape = current.shape.map((row, r) =>
@@ -154,12 +185,113 @@ function spawn() {
     endGame();
   }
   drawNext();
+  drawQueue();
 }
 
 function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  energyFill.style.width = `${(energy / ENERGY_MAX) * 100}%`;
+  energyFill.classList.toggle('ready', energy >= ENERGY_MAX);
+  if (slowMs > 0) abilityStatus.textContent = `Lento ${Math.ceil(slowMs / 1000)}s`;
+  else abilityStatus.textContent = energy >= ENERGY_MAX ? 'Pulsa E' : '';
+}
+
+// ---- Abilities ----
+const ABILITIES = {
+  1: abilityPreview,
+  2: abilitySwap,
+  3: abilitySlow,
+  4: abilityUndo,
+  5: abilityHold,
+};
+
+function abilityPreview() {
+  previewLeft = PREVIEW_PIECES + 1; // +1: current spawn decrement already happened
+  drawQueue();
+  return true;
+}
+
+function abilitySwap() {
+  let type;
+  do {
+    type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
+  } while (type === current.type);
+  const shape = PIECES[type].map(row => [...row]);
+  for (const kick of [0, -1, 1, -2, 2]) {
+    if (!collide(shape, current.x + kick, current.y)) {
+      current = { type, shape, x: current.x + kick, y: current.y };
+      return true;
+    }
+  }
+  return false;
+}
+
+function abilitySlow() {
+  slowMs = SLOW_MS;
+  return true;
+}
+
+function abilityUndo() {
+  if (!undoSnap) return false;
+  board = undoSnap.board;
+  score = undoSnap.score;
+  lines = undoSnap.lines;
+  level = undoSnap.level;
+  dropInterval = undoSnap.dropInterval;
+  queue.unshift(makePiece(current.type));
+  current = makePiece(undoSnap.type);
+  undoSnap = null;
+  drawNext();
+  drawQueue();
+  return true;
+}
+
+function abilityHold() {
+  if (held) return false;
+  held = makePiece(current.type);
+  holdReady = true;
+  spawn();
+  drawHold();
+  return true;
+}
+
+function useHeld() {
+  if (!holdReady || !held) return;
+  queue.unshift(makePiece(current.type));
+  current = makePiece(held.type);
+  held = null;
+  holdReady = false;
+  if (collide(current.shape, current.x, current.y)) endGame();
+  drawHold();
+  drawNext();
+  drawQueue();
+}
+
+function openAbilityMenu() {
+  if (energy < ENERGY_MAX || paused || gameOver || choosing) return;
+  choosing = true;
+  cancelAnimationFrame(animId);
+  abilityMenu.querySelector('[data-ability="4"]').disabled = !undoSnap;
+  abilityMenu.querySelector('[data-ability="5"]').disabled = !!held;
+  abilityMenu.classList.remove('hidden');
+}
+
+function closeAbilityMenu() {
+  if (!choosing) return;
+  choosing = false;
+  abilityMenu.classList.add('hidden');
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
+function useAbility(id) {
+  const fn = ABILITIES[id];
+  if (!choosing || !fn || !fn()) return;
+  energy = 0;
+  updateHUD();
+  closeAbilityMenu();
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -215,15 +347,32 @@ function draw() {
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
 }
 
-function drawNext() {
-  const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  const shape = next.shape;
-  const offX = Math.floor((4 - shape[0].length) / 2);
-  const offY = Math.floor((4 - shape.length) / 2);
+// draws a piece centered in a 4x4-cell slot at (slotX, slotY) cells
+function drawPieceInSlot(context, shape, size, slotX, slotY) {
+  const offX = slotX + Math.floor((4 - shape[0].length) / 2);
+  const offY = slotY + Math.floor((4 - shape.length) / 2);
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
-      drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+      drawBlock(context, offX + c, offY + r, shape[r][c], size);
+}
+
+function drawNext() {
+  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  drawPieceInSlot(nextCtx, queue[0].shape, 30, 0, 0);
+}
+
+function drawQueue() {
+  queueSection.classList.toggle('hidden', previewLeft <= 0);
+  queueCtx.clearRect(0, 0, queueCanvas.width, queueCanvas.height);
+  if (previewLeft <= 0) return;
+  for (let i = 0; i < PREVIEW_COUNT; i++)
+    drawPieceInSlot(queueCtx, queue[i].shape, 15, 0, i * 4);
+}
+
+function drawHold() {
+  holdSection.classList.toggle('hidden', !held);
+  holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+  if (held) drawPieceInSlot(holdCtx, held.shape, 30, 0, 0);
 }
 
 function endGame() {
@@ -235,9 +384,10 @@ function endGame() {
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || choosing) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
@@ -252,7 +402,11 @@ function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
   dropAccum += dt;
-  if (dropAccum >= dropInterval) {
+  if (slowMs > 0) {
+    slowMs = Math.max(0, slowMs - dt);
+    updateHUD();
+  }
+  if (dropAccum >= dropInterval * (slowMs > 0 ? SLOW_FACTOR : 1)) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
@@ -275,18 +429,39 @@ function init() {
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
-  next = randomPiece();
+  energy = 0;
+  previewLeft = 0;
+  slowMs = 0;
+  held = null;
+  holdReady = false;
+  undoSnap = null;
+  choosing = false;
+  queue = [];
+  fillQueue();
   spawn();
+  drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  abilityMenu.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  if (choosing) {
+    if (e.code === 'Escape') closeAbilityMenu();
+    else if (/^(Digit|Numpad)[1-5]$/.test(e.code)) useAbility(e.code.slice(-1));
+    return;
+  }
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
+    case 'KeyE':
+      openAbilityMenu();
+      return;
+    case 'KeyC':
+      useHeld();
+      break;
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
       break;
@@ -310,6 +485,13 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+abilityMenu.addEventListener('click', e => {
+  const btn = e.target.closest('[data-ability]');
+  if (btn && !btn.disabled) useAbility(btn.dataset.ability);
+  else if (e.target.id === 'ability-cancel') closeAbilityMenu();
+  if (btn) btn.blur();
+});
+
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   themeBtn.textContent = theme === 'light' ? 'Dark mode' : 'Light mode';
@@ -317,6 +499,8 @@ function applyTheme(theme) {
   // the loop is cancelled while paused / game over, so redraw explicitly
   draw();
   drawNext();
+  drawQueue();
+  drawHold();
 }
 
 themeBtn.addEventListener('click', () => {
