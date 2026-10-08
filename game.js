@@ -148,6 +148,9 @@ function spawn() {
   current = next;
   next = randomPiece();
   if (collide(current.shape, current.x, current.y)) {
+    // keep only the cells that fit in free board spaces
+    current.shape = current.shape.map((row, r) =>
+      row.map((v, c) => (v && !collide([[v]], current.x + c, current.y + r) ? v : 0)));
     endGame();
   }
   drawNext();
@@ -198,11 +201,13 @@ function draw() {
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
   // ghost
-  const gy = ghostY();
-  for (let r = 0; r < current.shape.length; r++)
-    for (let c = 0; c < current.shape[r].length; c++)
-      if (current.shape[r][c])
-        drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+  if (!gameOver) {
+    const gy = ghostY();
+    for (let r = 0; r < current.shape.length; r++)
+      for (let c = 0; c < current.shape[r].length; c++)
+        if (current.shape[r][c])
+          drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+  }
 
   // current piece
   for (let r = 0; r < current.shape.length; r++)
