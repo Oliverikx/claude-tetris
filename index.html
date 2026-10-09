@@ -53,7 +53,7 @@
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>E</kbd> habilidad</li>
             <li><kbd>C</kbd> usar hold</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd>/<kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -73,6 +73,34 @@
         <button class="ability-btn" data-ability="4"><kbd>4</kbd> Deshacer</button>
         <button class="ability-btn" data-ability="5"><kbd>5</kbd> Guardar pieza</button>
         <button id="ability-cancel" class="ability-btn cancel">Esc cancelar</button>
+      </div>
+    </div>
+
+    <div id="pause-menu" class="overlay hidden">
+      <div class="overlay-box">
+        <p class="menu-title">PAUSA</p>
+        <div id="pause-main" class="overlay-box">
+          <button id="pause-resume" class="ability-btn">Reanudar</button>
+          <button id="pause-restart" class="ability-btn">Reiniciar</button>
+          <button id="pause-controls-btn" class="ability-btn">Ver controles</button>
+          <label class="pause-level">Nivel inicial
+            <select id="start-level">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </label>
+        </div>
+        <ul id="pause-controls" class="pause-controls hidden">
+          <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+          <li><kbd>↑</kbd> / <kbd>X</kbd> rotar</li>
+          <li><kbd>↓</kbd> bajar</li>
+          <li><kbd>Space</kbd> caída</li>
+          <li><kbd>E</kbd> habilidad</li>
+          <li><kbd>C</kbd> usar hold</li>
+          <li><kbd>P</kbd> / <kbd>Esc</kbd> pausa</li>
+        </ul>
       </div>
     </div>
 

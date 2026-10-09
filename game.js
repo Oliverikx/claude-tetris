@@ -61,6 +61,7 @@ const queueCtx = queueCanvas.getContext('2d');
 
 let board, current, queue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let energy, previewLeft, slowMs, held, holdReady, undoSnap, choosing;
+let startLevel = 1;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -133,7 +134,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = Math.max(startLevel, Math.floor(lines / 10) + 1);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     energy = Math.min(ENERGY_MAX, energy + cleared * ENERGY_PER_LINE);
     updateHUD();
@@ -383,18 +384,27 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+// ---- Pause menu ----
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMain = document.getElementById('pause-main');
+const pauseControls = document.getElementById('pause-controls');
+const startLevelSel = document.getElementById('start-level');
+
 function togglePause() {
   if (gameOver || choosing) return;
   paused = !paused;
-  if (!paused) {
-    overlay.classList.add('hidden');
+  if (paused) {
+    cancelAnimationFrame(animId);
+    pauseMain.classList.remove('hidden');
+    pauseControls.classList.add('hidden');
+    startLevelSel.value = startLevel;
+    pauseMenu.classList.remove('hidden');
+  } else {
+    pauseMenu.classList.add('hidden');
+    if (document.activeElement) document.activeElement.blur();
+    dropAccum = 0;
     lastTime = performance.now();
     loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
   }
 }
 
@@ -423,10 +433,10 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   energy = 0;
@@ -442,18 +452,25 @@ function init() {
   drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
   abilityMenu.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  if (e.repeat && (paused || e.code === 'Escape' || e.code === 'KeyP')) return;
+  if (paused) {
+    // menu abierto: solo P/Esc, el resto no llega al juego
+    if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
+    return;
+  }
   if (choosing) {
     if (e.code === 'Escape') closeAbilityMenu();
     else if (/^(Digit|Numpad)[1-5]$/.test(e.code)) useAbility(e.code.slice(-1));
     return;
   }
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'KeyE':
@@ -484,6 +501,19 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+document.getElementById('pause-resume').addEventListener('click', togglePause);
+document.getElementById('pause-restart').addEventListener('click', () => {
+  if (document.activeElement) document.activeElement.blur();
+  init();
+});
+document.getElementById('pause-controls-btn').addEventListener('click', () => {
+  pauseControls.classList.toggle('hidden');
+});
+startLevelSel.addEventListener('change', () => {
+  startLevel = parseInt(startLevelSel.value, 10) || 1;
+  startLevelSel.blur();
+});
 
 abilityMenu.addEventListener('click', e => {
   const btn = e.target.closest('[data-ability]');

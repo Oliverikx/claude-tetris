@@ -299,3 +299,44 @@ kbd {
 #restart-btn:hover {
   background: var(--accent-hover);
 }
+
+/* ---- Menú de pausa ---- */
+.pause-level {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 190px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+#start-level {
+  background: var(--kbd-bg);
+  color: var(--kbd-text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.pause-controls {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.pause-controls li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#pause-main.hidden,
+.pause-controls.hidden {
+  display: none;
+}

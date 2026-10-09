@@ -12,11 +12,12 @@ Open `index.html` directly, or serve statically: `python -m http.server 8000` �
 
 ## Architecture
 
-All logic in `game.js` (single script, global state, loaded by `index.html` via plain `<script>`). DOM ids it depends on: `board`, `next-canvas`, `score`, `lines`, `level`, `overlay`, `overlay-title`, `overlay-score`, `restart-btn`, `energy-fill`, `ability-status`, `ability-menu`, `hold-section`, `hold-canvas`, `queue-section`, `queue-canvas` — renaming in `index.html` breaks it.
+All logic in `game.js` (single script, global state, loaded by `index.html` via plain `<script>`). DOM ids it depends on: `board`, `next-canvas`, `score`, `lines`, `level`, `overlay`, `overlay-title`, `overlay-score`, `restart-btn`, `energy-fill`, `ability-status`, `ability-menu`, `hold-section`, `hold-canvas`, `queue-section`, `queue-canvas`, `pause-menu`, `pause-main`, `pause-controls`, `start-level` (+ `pause-resume`/`pause-restart`/`pause-controls-btn`) — renaming in `index.html` breaks it.
 
 - Board: `ROWS×COLS` matrix; 0 = empty, 1–7 = piece type index into both `COLORS` and `PIECES` (piece shape cells hold their own type index).
 - Flow: `init()` → `spawn()` → rAF `loop()` drops piece per `dropInterval`; `lockPiece()` = `merge()` → `clearLines()` → `spawn()`. Spawn collision → `endGame()`.
 - `clearLines()` owns level/speed updates (level = lines/10+1; interval = max(100, 1000-(level-1)*90)).
+- Pause menu (`#pause-menu`, `P`/`Esc`, `paused` flag): keydown returns early while paused except P/Esc; Reanudar/Reiniciar(`init()`)/Ver controles/Nivel inicial (`startLevel`, used by `init()` and as floor in `clearLines`). `#overlay` is game over only.
 - Pause/game over work by `cancelAnimationFrame(animId)`; `togglePause` restarts `loop` manually.
 - Abilities: `energy` (+25/line in `clearLines`, max 100) → `E` opens `#ability-menu` (cancels rAF like pause, `choosing` flag) → `useAbility(1-5)` via `ABILITIES` map; success zeroes energy. `queue` (≥6 pieces) replaces old `next`; `undoSnap` saved in `lockPiece`; slow time ticks in `loop` (`slowMs`).
 - Rotation: `rotateCW` + kick offsets `[0,-1,1,-2,2]` in `tryRotate` (no SRS, no rotate-back-on-fail beyond skipping).
