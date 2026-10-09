@@ -340,3 +340,10 @@ kbd {
 .pause-controls.hidden {
   display: none;
 }
+
+.pause-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
