@@ -168,7 +168,7 @@ function lockPiece() {
   undoSnap = {
     board: board.map(r => [...r]),
     type: current.type,
-    score, lines, level, dropInterval, combo,
+    score, lines, level, dropInterval, combo, bestCombo,
   };
   const linesBefore = lines;
   merge();
@@ -244,6 +244,7 @@ function abilityUndo() {
   level = undoSnap.level;
   dropInterval = undoSnap.dropInterval;
   combo = undoSnap.combo;
+  bestCombo = undoSnap.bestCombo;
   queue.unshift(makePiece(current.type));
   current = makePiece(undoSnap.type);
   undoSnap = null;
@@ -509,12 +510,11 @@ let pendingRank = -1; // rank of the unsaved game-over score, -1 = none
 const memStore = {};  // fallback when localStorage is unavailable
 
 function loadJSON(key, fallback) {
+  if (key in memStore) return memStore[key];
   try {
     const v = JSON.parse(localStorage.getItem(key));
     if (v != null) return v;
-  } catch (e) {
-    if (key in memStore) return memStore[key];
-  }
+  } catch (e) {}
   return fallback;
 }
 
@@ -526,7 +526,8 @@ function saveJSON(key, value) {
 function loadScores() {
   const list = loadJSON(HS_KEY, []);
   if (!Array.isArray(list)) return [];
-  return list.filter(x => x && typeof x.score === 'number').slice(0, HS_MAX);
+  return list.filter(x => x && Number.isFinite(x.score))
+    .sort((a, b) => b.score - a.score).slice(0, HS_MAX);
 }
 
 function loadRecords() {
