@@ -39,6 +39,22 @@
   --btn-text: #ffffff;
 }
 
+/* ---- Skins (override canvas look; neon: black board in both modes; pastel follows theme) ---- */
+[data-skin="neon"] {
+  --canvas-bg: #000000;
+  --grid: #1a1a2a;
+}
+
+[data-skin="pastel"] {
+  --canvas-bg: #efe3ee;
+  --grid: #e2d3e0;
+}
+
+[data-skin="pastel"][data-theme="dark"] {
+  --canvas-bg: #2a2536;
+  --grid: #35304a;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -71,7 +87,12 @@ body {
   text-shadow: 0 0 16px var(--accent-glow);
 }
 
-#theme-btn {
+.toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+#theme-btn, #skin-select {
   background: transparent;
   color: var(--accent);
   border: 1px solid var(--border);
@@ -83,7 +104,12 @@ body {
   letter-spacing: 1px;
 }
 
-#theme-btn:hover {
+#skin-select option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+#theme-btn:hover, #skin-select:hover {
   border-color: var(--accent);
 }
 
