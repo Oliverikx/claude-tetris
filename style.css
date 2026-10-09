@@ -299,3 +299,112 @@ kbd {
 #restart-btn:hover {
   background: var(--accent-hover);
 }
+
+/* ---- High scores ---- */
+.hs-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.hs-block.hidden, .hs-entry.hidden {
+  display: none;
+}
+
+.hs-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 300px;
+}
+
+.hs-table th {
+  color: var(--label);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: left;
+  padding: 4px 8px;
+}
+
+.hs-table td {
+  padding: 4px 8px;
+  text-align: left;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.hs-table tr.highlight td {
+  background: var(--accent);
+  color: var(--btn-text);
+  font-weight: 700;
+}
+
+.hs-empty, .hs-records {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hs-new {
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 13px;
+}
+
+.hs-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.hs-row {
+  display: flex;
+  gap: 6px;
+}
+
+#hs-name {
+  width: 140px;
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  user-select: text;
+}
+
+#hs-save, #start-btn {
+  background: var(--accent);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#start-btn {
+  padding: 10px 28px;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+#hs-save:hover, #start-btn:hover {
+  background: var(--accent-hover);
+}
+
+.hs-reset {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.hs-reset:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}

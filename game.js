@@ -60,6 +60,7 @@ const queueCanvas = document.getElementById('queue-canvas');
 const queueCtx = queueCanvas.getContext('2d');
 
 let board, current, queue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let combo, bestCombo; // consecutive line-clearing locks / best this game
 let energy, previewLeft, slowMs, held, holdReady, undoSnap, choosing;
 
 function createBoard() {
@@ -167,10 +168,12 @@ function lockPiece() {
   undoSnap = {
     board: board.map(r => [...r]),
     type: current.type,
-    score, lines, level, dropInterval,
+    score, lines, level, dropInterval, combo,
   };
+  const linesBefore = lines;
   merge();
   clearLines();
+  trackCombo(lines > linesBefore);
   spawn();
 }
 
@@ -240,6 +243,7 @@ function abilityUndo() {
   lines = undoSnap.lines;
   level = undoSnap.level;
   dropInterval = undoSnap.dropInterval;
+  combo = undoSnap.combo;
   queue.unshift(makePiece(current.type));
   current = makePiece(undoSnap.type);
   undoSnap = null;
@@ -381,6 +385,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  showGameOverScores();
 }
 
 function togglePause() {
@@ -436,6 +441,7 @@ function init() {
   holdReady = false;
   undoSnap = null;
   choosing = false;
+  resetRunStats();
   queue = [];
   fillQueue();
   spawn();
@@ -448,6 +454,8 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  // typing in the name field / start screen: game keys must not fire
+  if (e.target instanceof HTMLInputElement || !startOverlay.classList.contains('hidden')) return;
   if (choosing) {
     if (e.code === 'Escape') closeAbilityMenu();
     else if (/^(Digit|Numpad)[1-5]$/.test(e.code)) useAbility(e.code.slice(-1));
@@ -483,7 +491,172 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+// ---- High scores ----
+const HS_KEY = 'tetris-highscores';
+const REC_KEY = 'tetris-records';
+const HS_MAX = 5;
+const NAME_MAX = 12;
+const DEFAULT_NAME = 'Jugador';
+
+const startOverlay = document.getElementById('start-overlay');
+const startBtn = document.getElementById('start-btn');
+const hsEntry = document.getElementById('hs-entry');
+const hsName = document.getElementById('hs-name');
+const hsSave = document.getElementById('hs-save');
+const overlayScores = document.getElementById('overlay-scores');
+
+let pendingRank = -1; // rank of the unsaved game-over score, -1 = none
+const memStore = {};  // fallback when localStorage is unavailable
+
+function loadJSON(key, fallback) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key));
+    if (v != null) return v;
+  } catch (e) {
+    if (key in memStore) return memStore[key];
+  }
+  return fallback;
+}
+
+function saveJSON(key, value) {
+  memStore[key] = value;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+
+function loadScores() {
+  const list = loadJSON(HS_KEY, []);
+  if (!Array.isArray(list)) return [];
+  return list.filter(x => x && typeof x.score === 'number').slice(0, HS_MAX);
+}
+
+function loadRecords() {
+  const r = loadJSON(REC_KEY, null) || {};
+  return { bestCombo: +r.bestCombo || 0, maxLines: +r.maxLines || 0 };
+}
+
+// index where `sc` would enter the list (ties go after), -1 if it doesn't make top
+function rankFor(list, sc) {
+  if (sc <= 0) return -1;
+  let i = list.findIndex(x => sc > x.score);
+  if (i < 0) i = list.length;
+  return i < HS_MAX ? i : -1;
+}
+
+function trackCombo(cleared) {
+  combo = cleared ? combo + 1 : 0;
+  if (combo > bestCombo) bestCombo = combo;
+}
+
+function resetRunStats() {
+  combo = 0;
+  bestCombo = 0;
+  pendingRank = -1;
+  hsEntry.classList.add('hidden');
+  overlayScores.classList.add('hidden');
+}
+
+function cell(tag, text, cls) {
+  const el = document.createElement(tag);
+  el.textContent = text;
+  if (cls) el.className = cls;
+  return el;
+}
+
+function renderTable(box, list, hi) {
+  box.textContent = '';
+  if (!list.length) { box.appendChild(cell('p', 'Sin récords todavía', 'hs-empty')); return; }
+  const table = document.createElement('table');
+  table.className = 'hs-table';
+  const head = table.insertRow();
+  ['#', 'Nombre', 'Puntos', 'Líneas', 'Combo'].forEach(t => head.appendChild(cell('th', t)));
+  list.forEach((x, i) => {
+    const tr = table.insertRow();
+    if (i === hi) tr.className = 'highlight';
+    [i + 1, x.name || DEFAULT_NAME, x.score.toLocaleString(), x.lines || 0, x.combo || 0]
+      .forEach(t => tr.appendChild(cell('td', t)));
+  });
+  box.appendChild(table);
+}
+
+// refresh all tables; hi = row to highlight on the game-over table (-1 none)
+function renderScores(hi = -1) {
+  const list = loadScores();
+  let shown = list;
+  if (pendingRank >= 0) { // preview the unsaved entry
+    shown = list.slice();
+    shown.splice(pendingRank, 0, { name: '(tú)', score, lines, combo: bestCombo });
+    shown.length = Math.min(shown.length, HS_MAX);
+    hi = pendingRank;
+  }
+  document.querySelectorAll('.hs-table-box').forEach(box => {
+    const onStart = !!box.closest('#start-overlay');
+    renderTable(box, onStart ? list : shown, onStart ? -1 : hi);
+  });
+  const r = loadRecords();
+  document.querySelectorAll('.hs-records').forEach(el => {
+    el.textContent = `Mejor combo: ${r.bestCombo} · Máx. líneas: ${r.maxLines}`;
+  });
+}
+
+function showStart() {
+  init();
+  cancelAnimationFrame(animId);
+  renderScores();
+  startOverlay.classList.remove('hidden');
+  startBtn.focus();
+}
+
+function showGameOverScores() {
+  const rec = loadRecords();
+  rec.bestCombo = Math.max(rec.bestCombo, bestCombo);
+  rec.maxLines = Math.max(rec.maxLines, lines);
+  saveJSON(REC_KEY, rec);
+  pendingRank = rankFor(loadScores(), score);
+  overlayScores.classList.remove('hidden');
+  hsEntry.classList.toggle('hidden', pendingRank < 0);
+  hsName.value = DEFAULT_NAME;
+  renderScores();
+  // delay so keys still held (Space spam) don't land in the field
+  if (pendingRank >= 0) setTimeout(() => { if (pendingRank >= 0) { hsName.focus(); hsName.select(); } }, 400);
+}
+
+function saveEntry() {
+  if (pendingRank < 0) return;
+  const list = loadScores();
+  const rank = rankFor(list, score);
+  pendingRank = -1;
+  hsEntry.classList.add('hidden');
+  if (rank >= 0) {
+    list.splice(rank, 0, {
+      name: hsName.value.trim().slice(0, NAME_MAX) || DEFAULT_NAME,
+      score, lines, combo: bestCombo,
+      date: new Date().toISOString().slice(0, 10),
+    });
+    saveJSON(HS_KEY, list.slice(0, HS_MAX));
+  }
+  renderScores(rank);
+}
+
+startBtn.addEventListener('click', () => {
+  startOverlay.classList.add('hidden');
+  startBtn.blur();
+  init();
+});
+
+hsSave.addEventListener('click', saveEntry);
+hsName.addEventListener('keydown', e => { if (e.key === 'Enter') saveEntry(); });
+
+document.querySelectorAll('.hs-reset').forEach(btn => btn.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los récords?')) return;
+  saveJSON(HS_KEY, []);
+  saveJSON(REC_KEY, { bestCombo: 0, maxLines: 0 });
+  pendingRank = -1;
+  hsEntry.classList.add('hidden');
+  renderScores();
+  btn.blur();
+}));
+
+restartBtn.addEventListener('click', () => { saveEntry(); init(); });
 
 abilityMenu.addEventListener('click', e => {
   const btn = e.target.closest('[data-ability]');
@@ -508,7 +681,7 @@ themeBtn.addEventListener('click', () => {
   themeBtn.blur();
 });
 
-init();
+showStart();
 
 let savedTheme = null;
 try { savedTheme = localStorage.getItem('theme'); } catch (e) {}

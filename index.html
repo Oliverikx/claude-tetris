@@ -76,10 +76,34 @@
       </div>
     </div>
 
+    <div id="start-overlay" class="overlay hidden">
+      <div class="overlay-box">
+        <p class="menu-title">MEJORES PUNTUACIONES</p>
+        <div class="hs-block">
+          <div class="hs-table-box"></div>
+          <p class="hs-records"></p>
+          <button class="hs-reset" type="button">Borrar récords</button>
+        </div>
+        <button id="start-btn" type="button">Jugar</button>
+      </div>
+    </div>
+
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <div id="overlay-scores" class="hs-block hidden">
+          <div id="hs-entry" class="hs-entry hidden">
+            <span class="hs-new">¡Nuevo récord!</span>
+            <div class="hs-row">
+              <input id="hs-name" type="text" maxlength="12" value="Jugador" autocomplete="off" aria-label="Nombre" />
+              <button id="hs-save" type="button">Guardar</button>
+            </div>
+          </div>
+          <div class="hs-table-box"></div>
+          <p class="hs-records"></p>
+          <button class="hs-reset" type="button">Borrar récords</button>
+        </div>
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
